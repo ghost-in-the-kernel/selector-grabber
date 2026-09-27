@@ -9,7 +9,7 @@ Built for Brave first, and it works the same in Chrome. It works on the first cl
 
 ## Try it in Brave (no build needed)
 
-1. Download `selector-grabber-store-upload-v0.1.1.zip` from the [Releases](../../releases) page (or build it, below) and unzip it.
+1. Download `selector-grabber-store-upload-v0.1.2.zip` from the [Releases](../../releases) page (or build it, below) and unzip it.
 2. Open `brave://extensions` (in Chrome: `chrome://extensions`).
 3. Turn on **Developer mode** (top right).
 4. Click **Load unpacked** and choose the unzipped extension folder (the one with `manifest.json` and `background.js` in it).

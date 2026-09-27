@@ -90,6 +90,12 @@ test.describe('shop fixture', () => {
     expect(r.xpath).toBe("//h3[normalize-space()='Example: Homepage']");
   });
 
+  test('long result titles match on their opening words, not their position', async ({ page }) => {
+    const r = await locate(page, 'h3#_xCu5avrzHvXL0PEPy7fBkQY_76');
+    expect(r.xpath).toBe("//h3[starts-with(normalize-space(),'The future is yours to build | Example')]");
+    expect(r.xpath).not.toMatch(/\)\[\d+\]$/);
+  });
+
   test('repeated items are reached from a named list, within three steps', async ({ page }) => {
     const r = await locate(page, 'ul li:nth-child(2) span');
     expect(r.xpath).toBe("//div[@id='root']//ul[li/span[normalize-space()='Free shipping']]/li[2]/span");

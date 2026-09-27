@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { xpathLiteral } from '../../src/engine/literal';
 import { looksGenerated } from '../../src/engine/generated';
+import { textPrefix } from '../../src/engine';
 import { formatAll, javaString, ordinal, type Pick } from '../../src/format';
 
 describe('xpathLiteral', () => {
@@ -65,4 +66,11 @@ describe('Java formatter', () => {
   it('raw mode is one XPath per line', () => {
     expect(formatAll(picks, 'playwright', 'raw')).toBe(`${picks[0].xpath}\n${picks[1].xpath}`);
   });
+});
+
+describe('textPrefix', () => {
+  it('leaves short text to exact matching', () => expect(textPrefix('Cognizant Careers')).toBeNull());
+  it('cuts long text at a word boundary', () =>
+    expect(textPrefix('The future is yours to build | Cognizant Careers | Cognizant ...')).toBe('The future is yours to build | Cognizant'));
+  it('refuses article-length text', () => expect(textPrefix('word '.repeat(80))).toBeNull());
 });

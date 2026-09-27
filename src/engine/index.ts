@@ -50,6 +50,8 @@ const LABEL_ATTRS = ['aria-label', 'placeholder', 'title', 'alt'];
 const NAME_TAGS = new Set(['input', 'select', 'textarea', 'button', 'form', 'iframe', 'fieldset', 'output', 'object']);
 const FORM_FIELDS = new Set(['input', 'select', 'textarea']);
 const MAX_TEXT = 40;
+/** Elements whose text is their identity. A layout box's text is just its children's text. */
+const PREFIX_TAGS = new Set(['a', 'button', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'td', 'th', 'label', 'legend', 'caption', 'summary', 'option', 'dt', 'dd', 'span', 'strong', 'em', 'b', 'small', 'blockquote', 'figcaption']);
 const MAX_ATTR = 80;
 
 function stabilityFor(rung: number): Stability {
@@ -64,6 +66,22 @@ function ownText(el: Element): string {
     if (n.nodeType === 3 && n.textContent!.trim()) return n.textContent!.replace(/[ \t\r\n]+/g, ' ').trim();
   }
   return '';
+}
+
+/**
+ * The opening words of a long text, cut at a word boundary: at most MAX_TEXT characters and at
+ * least 16, so the prefix is still specific. Null for short text (matched whole instead), for
+ * text too long to be a label (a whole article), and for text containing &nbsp;.
+ */
+export function textPrefix(t: string): string | null {
+  if (t.length <= MAX_TEXT || t.length > 300 || t.includes('\u00a0')) return null;
+  let cut = t.slice(0, MAX_TEXT);
+  if (t[MAX_TEXT] !== ' ') {
+    const space = cut.lastIndexOf(' ');
+    if (space < 16) return null;
+    cut = cut.slice(0, space);
+  }
+  return cut.trimEnd();
 }
 
 function usableText(el: Element): string | null {
@@ -114,6 +132,11 @@ export function ownPredicates(el: Element): Pred[] {
       // text() looks only at the element's own text node, which tells the two apart.
       const own = ownText(el);
       if (own === t) preds.push({ pred: `normalize-space(text())=${lit(t)}`, rung: 5, strategy: 'own text' });
+    } else {
+      // Long text (a search-result title, a headline): match its opening words instead of
+      // giving up and falling back to position.
+      const prefix = PREFIX_TAGS.has(tag) ? textPrefix(xpathNormalizedText(el)) : null;
+      if (prefix) preds.push({ pred: `starts-with(normalize-space(),${lit(prefix)})`, rung: 5, strategy: 'text prefix' });
     }
   }
 
@@ -138,7 +161,7 @@ function findAnchors(el: Element, limit = 4): Anchor[] {
     const t = a.localName.toLowerCase();
     if (t === 'body' || t === 'html') break;
     for (const p of ownPredicates(a)) {
-      if (p.rung > 4) continue;
+      if (p.rung > 4 && p.rung !== 6) continue; // Strong predicates, or a link's own URL
       const xp = `//${tagStep(a)}[${p.pred}]`;
       if (isUniqueMatch(xp, a)) {
         anchors.push({ el: a, xpath: xp });
