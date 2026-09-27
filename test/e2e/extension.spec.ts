@@ -151,8 +151,12 @@ test('Esc cancels, and clicking a picked element again unpicks it', async ({ con
     `page.locator("xpath=//div[@id='root']//div[.//h3[normalize-space()='Green mug']]/button");`,
   );
 
-  await press(page, panel, '#close', 'Escape');
+  // Key-down alone: it closes the panel, and Playwright would otherwise wait forever to deliver
+  // the key-up to the iframe that no longer exists.
+  await panel.focus('#close');
+  await page.keyboard.down('Escape');
   await expect.poll(() => overlayPresent(page)).toBe(false);
+  await page.keyboard.up('Escape');
 });
 
 test('clicking the icon again turns the picker off', async ({ context, sw, site }) => {
