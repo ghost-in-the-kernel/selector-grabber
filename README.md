@@ -4,8 +4,8 @@ Click elements on any page, press **Done**, and copy unique, relative XPath sele
 
 Built for Brave first, and it works the same in Chrome. It works on the first click on tabs that were already open: no reload, no DevTools.
 
-![Picking elements](docs/picking.png)
-![Results panel](docs/results.png)
+![Picking elements](docs/store/screenshot-1-picking.png)
+![Results panel](docs/store/screenshot-2-playwright.png)
 
 ## Try it in Brave (no build needed)
 

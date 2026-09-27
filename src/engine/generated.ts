@@ -17,6 +17,11 @@ export function looksGenerated(value: string | null | undefined): boolean {
   if (/\d{3,}/.test(v)) return true; // long digit runs are usually counters or timestamps
   // Hex or UUID chunks with at least one digit and one letter, e.g. 3f2a9c, a1b2c3d4
   if (/(^|[-_])(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{6,}($|[-_])/i.test(v)) return true;
+  // Random tokens: any 8+ character piece mixing digits, capitals and lowercase,
+  // e.g. Google's per-load ids like _xCG5apS3Hrzw0PEPqMW4yQI_60. Real names rarely mix all three.
+  for (const token of v.split(/[-_.:]/)) {
+    if (token.length >= 8 && /\d/.test(token) && /[A-Z]/.test(token) && /[a-z]/.test(token)) return true;
+  }
   // Hashed class-like suffixes: letters + mixed case/digits run of 5+, e.g. sc-AxjAm, x1a2b3c
   if (/[-_][a-zA-Z0-9]{5,}$/.test(v) && /\d/.test(v.split(/[-_]/).pop() ?? '') && /[a-z]/i.test(v.split(/[-_]/).pop() ?? '')) {
     return true;

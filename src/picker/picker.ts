@@ -34,6 +34,15 @@ interface Picked {
 const BLOCKED_EVENTS = ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick', 'auxclick'] as const;
 const EXT_ORIGIN = new URL(chrome.runtime.getURL('')).origin;
 
+/**
+ * Random session key. crypto.randomUUID() exists only on secure (https or localhost) pages, and
+ * the picker must also work on plain-http sites, so build one from getRandomValues(), which works everywhere.
+ */
+function sessionId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 function createPicker(): PickerApi {
   let running = false;
   let picking = false;
@@ -253,7 +262,7 @@ function createPicker(): PickerApi {
     });
 
     if (session) void chrome.storage.local.remove(`sg-session-${session}`); // from an earlier Done
-    session = crypto.randomUUID();
+    session = sessionId();
     await chrome.storage.local.set({ [`sg-session-${session}`]: { picks, url: location.href, createdAt: Date.now() } });
 
     picking = false;

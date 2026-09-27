@@ -35,7 +35,8 @@ const test = base.extend<{ context: BrowserContext; sw: Worker; site: string }>(
     const context = await chromium.launchPersistentContext('', {
       channel: 'chromium',
       headless: true,
-      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`],
+      // plain-http.example resolves to the local server: a non-secure origin, like most intranet test sites.
+      args: [`--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`, '--host-resolver-rules=MAP plain-http.example 127.0.0.1', '--no-proxy-server'],
     });
     await use(context);
     await context.close();
@@ -170,4 +171,17 @@ test('clicking the icon again turns the picker off', async ({ context, sw, site 
   // Page clicks work normally again.
   await page.click('a[href="/pokedex/bulbasaur"]');
   await expect(page).toHaveURL(`${site}/pokedex/bulbasaur`);
+});
+
+test('works on plain-http (non-secure) sites', async ({ context, sw, site }) => {
+  const page = await context.newPage();
+  await page.goto(site.replace('127.0.0.1', 'plain-http.example') + '/pokedex.html');
+  expect(await page.evaluate(() => window.isSecureContext)).toBe(false);
+  await page.bringToFront();
+  await activate(sw);
+  await expect.poll(() => overlayPresent(page)).toBe(true);
+  await page.click('table#pokedex', { position: { x: 5, y: 5 } });
+  await page.keyboard.press('Enter');
+  const panel = await panelFrame(page);
+  await expect(panel.locator('.card')).toHaveCount(1);
 });

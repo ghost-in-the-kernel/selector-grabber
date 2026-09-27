@@ -85,6 +85,11 @@ test.describe('shop fixture', () => {
     expect(r.xpath).toBe("//a[normalize-space()='Cart']");
   });
 
+  test('random per-load ids (Google style) are skipped in favour of text', async ({ page }) => {
+    const r = await locate(page, 'h3[id^="_x"]');
+    expect(r.xpath).toBe("//h3[normalize-space()='Example: Homepage']");
+  });
+
   test('no distinguishing feature falls back to a labelled position', async ({ page }) => {
     const r = await locate(page, 'ul li:nth-child(2) span');
     expect(r.stability).toBe('Fragile');

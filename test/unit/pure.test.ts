@@ -14,11 +14,11 @@ describe('xpathLiteral', () => {
 });
 
 describe('looksGenerated', () => {
-  it.each(['ember123', ':r1:', 'react-select-3-input', 'css-1x2y3z', 'sc-AxjAm', 'mui-12345', '3f2a9c1e-5b7d-4e8a', 'product-card-4821', 'x'.repeat(60), ''])(
+  it.each(['ember123', ':r1:', 'react-select-3-input', 'css-1x2y3z', 'sc-AxjAm', 'mui-12345', '3f2a9c1e-5b7d-4e8a', 'product-card-4821', '_xCG5apS3Hrzw0PEPqMW4yQI_60', 'kO001e', 'x'.repeat(60), ''])(
     'flags %s',
     (v) => expect(looksGenerated(v)).toBe(true),
   );
-  it.each(['pokedex', 'login-submit', 'email', 'input-12', 'search', 'main-menu', 'root', 'gen-1'])('keeps %s', (v) =>
+  it.each(['pokedex', 'login-submit', 'email', 'input-12', 'search', 'main-menu', 'root', 'gen-1', 'loginSubmit', 'searchBox', 'APjFqb', 'rso'])('keeps %s', (v) =>
     expect(looksGenerated(v)).toBe(false),
   );
 });

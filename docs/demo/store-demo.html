@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Harbor Books · Inventory</title>
+<!-- Fictional demo page used for store screenshots. Harbor Books is not a real company. -->
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1f2937; background: #f3f4f6; }
+  header { display: flex; align-items: center; gap: 24px; padding: 14px 32px; background: #0f766e; color: #fff; }
+  header .logo { font-weight: 800; font-size: 19px; letter-spacing: .2px; }
+  header nav a { color: #ccfbf1; text-decoration: none; margin-right: 18px; font-weight: 500; }
+  header nav a.active { color: #fff; border-bottom: 2px solid #fff; padding-bottom: 3px; }
+  main { max-width: 1080px; margin: 28px auto; padding: 0 32px; }
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  h1 { font-size: 24px; margin: 0 auto 0 0; }
+  input[type=search] { width: 280px; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; background: #fff; }
+  .btn { padding: 9px 16px; border-radius: 8px; border: 0; font: 600 14px system-ui, sans-serif; cursor: pointer; }
+  .btn-primary { background: #0f766e; color: #fff; }
+  .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: #6b7280; padding: 12px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; }
+  td a { color: #0f766e; font-weight: 600; text-decoration: none; }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #ecfdf5; color: #047857; }
+  .tag.low { background: #fef3c7; color: #92400e; }
+  .edit { background: none; border: 1px solid #d1d5db; border-radius: 7px; padding: 5px 12px; font: 600 13px system-ui, sans-serif; color: #374151; }
+  .num { font-variant-numeric: tabular-nums; }
+  footer { color: #6b7280; font-size: 13px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">Harbor Books</span>
+  <nav><a href="/dashboard">Dashboard</a><a class="active" href="/inventory">Inventory</a><a href="/orders">Orders</a><a href="/reports">Reports</a></nav>
+</header>
+<main>
+  <div class="toolbar">
+    <h1>Inventory</h1>
+    <input type="search" placeholder="Search titles or authors">
+    <button class="btn btn-primary" data-testid="add-book">Add book</button>
+  </div>
+  <div class="card">
+    <table id="inventory">
+      <thead><tr><th>Title</th><th>Author</th><th>Format</th><th>In stock</th><th>Price</th><th></th></tr></thead>
+      <tbody>
+        <tr><td><a href="/books/tide-and-lantern">The Tide and the Lantern</a></td><td>Mara Ellison</td><td>Hardcover</td><td class="num"><span class="tag">42</span></td><td class="num">$27.00</td><td><button class="edit">Edit</button></td></tr>
+        <tr><td><a href="/books/quiet-engines">Quiet Engines</a></td><td>Tomas Reyes</td><td>Paperback</td><td class="num"><span class="tag low">3</span></td><td class="num">$16.50</td><td><button class="edit">Edit</button></td></tr>
+        <tr><td><a href="/books/north-of-the-map">North of the Map</a></td><td>Ada Whitlock</td><td>Hardcover</td><td class="num"><span class="tag">18</span></td><td class="num">$29.00</td><td><button class="edit">Edit</button></td></tr>
+        <tr><td><a href="/books/salt-and-circuitry">Salt and Circuitry</a></td><td>Jun Park</td><td>Ebook</td><td class="num"><span class="tag">∞</span></td><td class="num">$9.99</td><td><button class="edit">Edit</button></td></tr>
+        <tr><td><a href="/books/field-guide-to-small-storms">A Field Guide to Small Storms</a></td><td>Mara Ellison</td><td>Paperback</td><td class="num"><span class="tag low">5</span></td><td class="num">$18.00</td><td><button class="edit">Edit</button></td></tr>
+        <tr><td><a href="/books/last-ferry">The Last Ferry Home</a></td><td>Priya Nandan</td><td>Hardcover</td><td class="num"><span class="tag">27</span></td><td class="num">$26.00</td><td><button class="edit">Edit</button></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <footer>Showing 6 of 6 titles</footer>
+</main>
+</body>
+</html>
