@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Sign in</title></head>
+<body>
+<!-- Form fields with React-style generated ids: locators must not depend on :r1: / :r2: -->
+<form class="login-form" action="/login" method="post">
+  <h2>Welcome back</h2>
+  <label for=":r1:">Email</label>
+  <input id=":r1:" type="email" autocomplete="email">
+  <label for=":r2:">Password</label>
+  <input id=":r2:" type="password">
+  <label><input type="checkbox"> Remember me</label>
+  <button type="submit" data-testid="login-submit">Sign in</button>
+  <button type="button">Cancel</button>
+  <p>Don't have an account? <a href="/signup">Create one</a></p>
+  <p class="notice">It's "new": passwordless sign-in</p>
+  <a href="/forgot">Forgot password?</a>
+  <input name="csrf_token" type="hidden" value="abc">
+  <select name="region"><option>US</option><option>EU</option></select>
+</form>
+</body>
+</html>

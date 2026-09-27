@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Selector Grabber results</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <main class="panel">
+    <header>
+      <div>
+        <h1>Selector Grabber</h1>
+        <p id="summary" class="muted">Loading…</p>
+      </div>
+      <button id="close" class="icon" aria-label="Close" title="Close (Esc)">✕</button>
+    </header>
+
+    <section class="controls" aria-label="Output options">
+      <div class="seg" role="radiogroup" aria-label="Framework">
+        <button role="radio" data-framework="playwright">Playwright</button>
+        <button role="radio" data-framework="selenium">Selenium</button>
+      </div>
+      <div class="seg" role="radiogroup" aria-label="Output">
+        <button role="radio" data-mode="code">Java code</button>
+        <button role="radio" data-mode="raw">Raw XPath</button>
+      </div>
+      <div class="seg locked" role="group" aria-label="Locator type">
+        <button aria-pressed="true" disabled>XPath</button>
+        <button disabled title="Role and CSS locators are part of Selector Grabber Pro (coming in v1.0)">Role · Pro</button>
+      </div>
+    </section>
+    <p class="muted small">Java for now. C#, TypeScript and Python arrive in v0.2.</p>
+
+    <ol id="list" class="list"></ol>
+
+    <!-- v0.3: the ad slot renders here, inside this extension page, never in the site's DOM. -->
+
+    <footer>
+      <button id="back" class="secondary">Back to picking</button>
+      <button id="copyAll" class="primary">Copy all</button>
+    </footer>
+  </main>
+  <script src="panel.js"></script>
+</body>
+</html>
