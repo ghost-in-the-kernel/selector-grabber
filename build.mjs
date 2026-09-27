@@ -26,7 +26,7 @@ cpSync('src/panel/panel.html', `${out}/panel/panel.html`);
 cpSync('src/panel/panel.css', `${out}/panel/panel.css`);
 cpSync('static/icons', `${out}/icons`, { recursive: true });
 
-const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
+const manifest = JSON.parse(readFileSync('src/manifest.json', 'utf8'));
 if (e2e) {
   // Automated tests cannot click the toolbar icon, so activeTab is never granted.
   // The test build adds a host permission instead. Never ship this build.

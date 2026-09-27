@@ -12,7 +12,8 @@ Built for Brave first, and it works the same in Chrome. It works on the first cl
 1. Download `selector-grabber-extension-v0.1.0.zip` from the [Releases](../../releases) page (or build it, below) and unzip it.
 2. Open `brave://extensions` (in Chrome: `chrome://extensions`).
 3. Turn on **Developer mode** (top right).
-4. Click **Load unpacked** and choose the unzipped folder (the one that contains `manifest.json`).
+4. Click **Load unpacked** and choose the unzipped extension folder (the one with `manifest.json` and `background.js` in it).
+   If you built from source, choose the `dist` folder, not the repository folder: the repository holds TypeScript that has to be built first.
 5. Click the puzzle-piece icon in the toolbar and pin **Selector Grabber**.
 
 ## Use it
