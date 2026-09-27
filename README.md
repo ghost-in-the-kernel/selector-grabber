@@ -9,7 +9,7 @@ Built for Brave first, and it works the same in Chrome. It works on the first cl
 
 ## Try it in Brave (no build needed)
 
-1. Download `selector-grabber-store-upload-v0.1.2.zip` from the [Releases](../../releases) page (or build it, below) and unzip it.
+1. Download `selector-grabber-store-upload-v0.1.3.zip` from the [Releases](../../releases) page (or build it, below) and unzip it.
 2. Open `brave://extensions` (in Chrome: `chrome://extensions`).
 3. Turn on **Developer mode** (top right).
 4. Click **Load unpacked** and choose the unzipped extension folder (the one with `manifest.json` and `background.js` in it).
@@ -47,8 +47,8 @@ For each element the engine climbs a ladder, most stable first, and keeps the fi
 | 4 | `aria-label`, `placeholder`, `title`, `alt`, or the field's `<label>` | `//input[@id=//label[normalize-space()='Email']/@for]` | Strong |
 | 5 | Exact visible text (40 characters or fewer) | `//a[normalize-space()='Charmander']` | OK |
 | 6 | Link path | `//a[@href='/pokedex/bulbasaur']` | OK |
-| 7 | Two attributes together, inside a uniquely located ancestor, or inside the nearest container named by nearby text (a row's link, a card's title, a group's label or legend), never more than three steps deep | `//div[@id='root']//div[h3[normalize-space()='Red mug']]//button[normalize-space()='Add to cart']` | OK |
-| 8 | Position under the nearest anchor (last resort) | `(//div[@id='root']//span)[2]` | Fragile |
+| 7 | Two attributes together; inside a uniquely located ancestor; under a parent's attribute (`//a[@href='…']/h3`); inside the nearest container named by nearby text (a row's link, a card's title, a group's legend); or a block named by the label inside it. Never more than three child steps in a row | `//div[@id='root']//div[h3[normalize-space()='Red mug']]//button[normalize-space()='Add to cart']` | OK |
+| 8 | Last resort: the element's best text or attribute plus a position (`(//div[normalize-space()='…'])[1]`), else position under the nearest anchor | `(//main[@id='app']//i)[2]` | Fragile |
 
 Other rules:
 

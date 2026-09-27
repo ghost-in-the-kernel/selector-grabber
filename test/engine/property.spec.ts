@@ -6,7 +6,7 @@ import { loadFixture } from './helpers';
  * matches it and only it, and no XPath is absolute. The rung histogram is printed so a change
  * that pushes picks toward Fragile shows up in review.
  */
-for (const name of ['pokedex.html', 'login.html', 'shop.html', 'github-form.html']) {
+for (const name of ['pokedex.html', 'login.html', 'shop.html', 'github-form.html', 'google-serp.html']) {
   test(`every element in ${name} gets a unique relative XPath`, async ({ page }) => {
     await loadFixture(page, name);
     const report = await page.evaluate(() => {

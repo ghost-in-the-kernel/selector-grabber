@@ -19,7 +19,7 @@
 import { describe, tagStep, truncate, normalizedText, xpathNormalizedText } from './describe';
 import { looksGenerated } from './generated';
 import { xpathLiteral as lit } from './literal';
-import { isUniqueMatch, positionIn } from './validate';
+import { countMatches, isUniqueMatch, positionIn } from './validate';
 
 export { xpathLiteral } from './literal';
 export { isUniqueMatch } from './validate';
@@ -60,6 +60,15 @@ function stabilityFor(rung: number): Stability {
   return 'Fragile';
 }
 
+const INLINE_TAGS = new Set(['span', 'a', 'b', 'strong', 'i', 'em', 'small', 'code', 'br', 'mark', 'sup', 'sub', 'cite', 'abbr', 'time', 'wbr', 'u', 's', 'q', 'kbd']);
+
+/** A div or similar box that holds only text and inline markup, e.g. a search-result snippet. */
+function isTextBlock(el: Element): boolean {
+  if (!['div', 'section', 'article', 'aside'].includes(el.localName.toLowerCase())) return false;
+  if (!Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent!.trim())) return false;
+  return Array.from(el.children).every((c) => INLINE_TAGS.has(c.localName.toLowerCase()));
+}
+
 /** The element's first direct text node, squeezed like normalize-space(text()). */
 function ownText(el: Element): string {
   for (const n of Array.from(el.childNodes)) {
@@ -70,18 +79,21 @@ function ownText(el: Element): string {
 
 /**
  * The opening words of a long text, cut at a word boundary: at most MAX_TEXT characters and at
- * least 16, so the prefix is still specific. Null for short text (matched whole instead), for
- * text too long to be a label (a whole article), and for text containing &nbsp;.
+ * least 16, so the prefix is still specific. Null for short text (matched whole instead) and for
+ * text too long to be a label (a whole article).
  */
 export function textPrefix(t: string): string | null {
-  if (t.length <= MAX_TEXT || t.length > 300 || t.includes('\u00a0')) return null;
+  if (t.length <= MAX_TEXT || t.length > 300) return null;
   let cut = t.slice(0, MAX_TEXT);
   if (t[MAX_TEXT] !== ' ') {
     const space = cut.lastIndexOf(' ');
     if (space < 16) return null;
     cut = cut.slice(0, space);
   }
-  return cut.trimEnd();
+  cut = cut.trimEnd();
+  // &nbsp; is invisible when pasted into code, so a prefix containing one is refused.
+  // Text that only has one later on (Google snippets end in "&nbsp;...") is fine.
+  return cut.includes('\u00a0') ? null : cut;
 }
 
 function usableText(el: Element): string | null {
@@ -132,11 +144,36 @@ export function ownPredicates(el: Element): Pred[] {
       // text() looks only at the element's own text node, which tells the two apart.
       const own = ownText(el);
       if (own === t) preds.push({ pred: `normalize-space(text())=${lit(t)}`, rung: 5, strategy: 'own text' });
+      // The opposite case: a wrapper with no text of its own, e.g. <span><span>People also ask</span></span>.
+      // Name it by the child that holds the text.
+      if (!own) {
+        const holder = Array.from(el.children).find((c) => usableText(c) === t);
+        if (holder) preds.push({ pred: `${tagStep(holder)}[normalize-space()=${lit(t)}]`, rung: 5, strategy: 'child text' });
+      }
     } else {
       // Long text (a search-result title, a headline): match its opening words instead of
       // giving up and falling back to position.
-      const prefix = PREFIX_TAGS.has(tag) ? textPrefix(xpathNormalizedText(el)) : null;
-      if (prefix) preds.push({ pred: `starts-with(normalize-space(),${lit(prefix)})`, rung: 5, strategy: 'text prefix' });
+      const prefix = PREFIX_TAGS.has(tag) || isTextBlock(el) ? textPrefix(xpathNormalizedText(el)) : null;
+      if (prefix) {
+        preds.push({ pred: `starts-with(normalize-space(),${lit(prefix)})`, rung: 5, strategy: 'text prefix' });
+        // Same wrapper problem as above: a wrapper div around a snippet starts with the same words.
+        if (ownText(el).startsWith(prefix)) {
+          preds.push({ pred: `starts-with(normalize-space(text()),${lit(prefix)})`, rung: 5, strategy: 'own text prefix' });
+        }
+      }
+    }
+  }
+
+  // Containers with no usable text of their own (a whole card, a question-and-answer block):
+  // name them by a short label inside, at most three levels down, e.g. div[div/span[...='People also ask']].
+  if (tag !== 'html' && tag !== 'body' && !usableText(el) && el.children.length > 0) {
+    const keys = Array.from(el.querySelectorAll('*'))
+      .map((k) => ({ k, text: usableText(k), path: childPath(el, k, false) }))
+      .filter((x): x is { k: Element; text: string; path: string } => !!x.text && !!x.path)
+      .sort((a, b) => keyRank(a.k) - keyRank(b.k) || a.path.split('/').length - b.path.split('/').length)
+      .slice(0, 5);
+    for (const { text, path } of keys) {
+      preds.push({ pred: `${path}[normalize-space()=${lit(text)}]`, rung: 7, strategy: 'labelled by its content' });
     }
   }
 
@@ -170,6 +207,34 @@ function findAnchors(el: Element, limit = 4): Anchor[] {
     }
   }
   return anchors;
+}
+
+/**
+ * Parent-attribute strategy: an ancestor a few levels up whose attribute is not unique on its own,
+ * followed by the step down to the element, with no positions (a positional step here would just
+ * be a shorter absolute path). This is how people write
+ *   //a[@href='https://www.cognizant.com/us/en']/h3
+ * when the same link appears several times on the page but only once around a heading.
+ */
+function parentAttributeStrategy(el: Element, preds: Pred[]): { xpath: string; strategy: string } | null {
+  const tag = tagStep(el);
+  let a = el.parentElement;
+  for (let level = 1; a && level <= MAX_STEPS; level++, a = a.parentElement) {
+    const t = a.localName.toLowerCase();
+    if (t === 'body' || t === 'html') break;
+    for (const ap of ownPredicates(a)) {
+      if (ap.rung > 4 && ap.rung !== 6) continue; // attributes only, not the ancestor's text
+      const parent = `//${tagStep(a)}[${ap.pred}]`;
+      const rel = childPath(a, el, false);
+      if (rel && isUniqueMatch(`${parent}/${rel}`, el)) return { xpath: `${parent}/${rel}`, strategy: `inside ${ap.strategy}` };
+      for (const p of preds) {
+        if (p.rung > 6) continue;
+        const xp = `${parent}//${tag}[${p.pred}]`;
+        if (isUniqueMatch(xp, el)) return { xpath: xp, strategy: `inside ${ap.strategy}` };
+      }
+    }
+  }
+  return null;
 }
 
 /** How far up the tree to look for a labelled container. */
@@ -234,6 +299,7 @@ function contextStrategy(el: Element, preds: Pred[], prefix: string, stopAt: Ele
       const container = `${prefix}//${tagStep(c)}[${path}[normalize-space()=${lit(text)}]]`;
       if (!isUniqueMatch(container, c)) continue;
       for (const p of preds) {
+        if (p.rung > 6) continue; // content labels are for the element itself, not inside a container
         const xp = `${container}//${tag}[${p.pred}]`;
         if (isUniqueMatch(xp, el)) return xp;
       }
@@ -270,17 +336,20 @@ export function generateLocator(el: Element): LocatorResult {
 
   const preds = ownPredicates(el);
 
-  // Rungs 1-6: one predicate on the element itself.
+  // Rungs 1-6: one predicate on the element itself. (Content labels, rung 7, come later.)
   for (const p of preds) {
+    if (p.rung > 6) continue;
     const xp = `//${tag}[${p.pred}]`;
     if (isUniqueMatch(xp, el)) return result(el, xp, p.rung, p.strategy);
   }
 
-  // Rung 7a: two of the element's own predicates together.
-  for (let i = 0; i < preds.length; i++) {
-    for (let j = i + 1; j < preds.length; j++) {
-      const xp = `//${tag}[${preds[i].pred}][${preds[j].pred}]`;
-      if (isUniqueMatch(xp, el)) return result(el, xp, 7, `${preds[i].strategy} + ${preds[j].strategy}`);
+  // Rung 7a: two of the element's own attribute or text predicates together (content labels are
+  // left out: they are already long, and pairing them multiplies the work on big pages).
+  const pairable = preds.filter((p) => p.rung <= 6);
+  for (let i = 0; i < pairable.length; i++) {
+    for (let j = i + 1; j < pairable.length; j++) {
+      const xp = `//${tag}[${pairable[i].pred}][${pairable[j].pred}]`;
+      if (isUniqueMatch(xp, el)) return result(el, xp, 7, `${pairable[i].strategy} + ${pairable[j].strategy}`);
     }
   }
 
@@ -288,6 +357,7 @@ export function generateLocator(el: Element): LocatorResult {
   const anchors = findAnchors(el);
   for (const a of anchors) {
     for (const p of preds) {
+      if (p.rung > 6) continue;
       const xp = `${a.xpath}//${tag}[${p.pred}]`;
       if (isUniqueMatch(xp, el)) return result(el, xp, 7, `anchored ${p.strategy}`);
     }
@@ -295,7 +365,11 @@ export function generateLocator(el: Element): LocatorResult {
     if (isUniqueMatch(bare, el)) return result(el, bare, 7, 'anchored tag');
   }
 
-  // Rung 7c: inside the nearest container identified by nearby text (row, card, form group).
+  // Rung 7c: under a nearby ancestor whose attribute (a link URL, a label) is unique together with the step down.
+  const parentAttr = parentAttributeStrategy(el, preds);
+  if (parentAttr) return result(el, parentAttr.xpath, 7, parentAttr.strategy);
+
+  // Rung 7d: inside the nearest container identified by nearby text (row, card, form group).
   for (const a of anchors) {
     const xp = contextStrategy(el, preds, a.xpath, a.el);
     if (xp) return result(el, xp, 7, 'anchored context');
@@ -303,7 +377,29 @@ export function generateLocator(el: Element): LocatorResult {
   const ctx = contextStrategy(el, preds, '', null);
   if (ctx) return result(el, ctx, 7, 'context');
 
-  // Rung 8: position among same-tag elements under the nearest anchor. Always unique, but fragile.
+  // Rung 7e: a container with no text of its own, named by the label inside it.
+  for (const p of preds) {
+    if (p.rung !== 7) continue;
+    const xp = `//${tag}[${p.pred}]`;
+    if (isUniqueMatch(xp, el)) return result(el, xp, 7, p.strategy);
+  }
+
+  // Rung 8a: the element's own best predicate plus a position, e.g. the 1st span reading
+  // "People also ask". Still Fragile, but far steadier than counting every span on the page.
+  let best: { xpath: string; count: number } | null = null;
+  for (const prefix of anchors[0] ? [anchors[0].xpath, ''] : ['']) {
+    for (const p of preds) {
+      const xp = `${prefix}//${tag}[${p.pred}]`;
+      const count = countMatches(xp, el.ownerDocument);
+      if (count > 0 && (!best || count < best.count)) best = { xpath: xp, count };
+    }
+  }
+  if (best) {
+    const n = positionIn(best.xpath, el);
+    if (n > 0) return result(el, `(${best.xpath})[${n}]`, 8, 'text or attribute + position');
+  }
+
+  // Rung 8b: position among same-tag elements under the nearest anchor. Always unique, but fragile.
   const base = `${anchors[0]?.xpath ?? ''}//${tag}`;
   const n = positionIn(base, el);
   const xp = `(${base})[${n}]`;

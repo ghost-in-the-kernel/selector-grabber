@@ -127,6 +127,31 @@ test.describe('github-style form fixture', () => {
   });
 });
 
+test.describe('google-style results fixture', () => {
+  test.beforeEach(async ({ page }) => loadFixture(page, 'google-serp.html'));
+
+  test('same title in several results: the result link around it identifies it', async ({ page }) => {
+    // The URL appears 7 times on the page, but only once around a heading.
+    const r = await locate(page, 'h3#_Uy25aq6VLqPqmLQP56qF-A8_60');
+    expect(r.xpath).toBe("//a[@href='https://www.example.com/us/en']/h3");
+  });
+
+  test('snippet matches its opening words; its wrapper div is not matched too', async ({ page }) => {
+    const r = await locate(page, '.tF2Cxc:has(#_Uy25aq6VLqPqmLQP56qF-A8_60) .VwiC3b');
+    expect(r.xpath).toBe(`//div[starts-with(normalize-space(text()),"We're building dependable software. From")]`);
+  });
+
+  test('a wrapper with no text of its own is named by its child', async ({ page }) => {
+    const r = await locate(page, 'span.mgAbYb');
+    expect(r.xpath).toBe("//span[span[normalize-space()='People also ask']]");
+  });
+
+  test('a block is named by the label inside it', async ({ page }) => {
+    const r = await locate(page, '.cUnQKe');
+    expect(r.xpath).toBe("//div[span[normalize-space()='People also ask']]");
+  });
+});
+
 test('nothing to go on anywhere: position under the nearest anchor, labelled Fragile', async ({ page }) => {
   await page.setContent('<main id="app"><div><i></i><i></i></div><div><i></i></div></main>');
   await page.addScriptTag({ content: engineBundle });
