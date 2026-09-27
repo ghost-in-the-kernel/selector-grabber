@@ -93,7 +93,7 @@ test('pick three elements, press Enter, get Playwright and Selenium Java', async
   await expect(panel.locator('.ordinal')).toHaveText(['1st selector', '2nd selector', '3rd selector']);
   await expect(panel.locator('pre')).toHaveText([
     `page.locator("xpath=//a[normalize-space()='Bulbasaur']");`,
-    `page.locator("xpath=//table[@id='pokedex']//tr[.//a[normalize-space()='Bulbasaur']]/td[5]");`,
+    `page.locator("xpath=//table[@id='pokedex']//tr[td/a[normalize-space()='Bulbasaur']]/td[5]");`,
     `page.locator("xpath=//h1[normalize-space()='Pokémon Pokédex']");`,
   ]);
 
@@ -101,7 +101,7 @@ test('pick three elements, press Enter, get Playwright and Selenium Java', async
   await expect(panel.locator('pre').first()).toHaveText(`driver.findElement(By.xpath("//a[normalize-space()='Bulbasaur']"));`);
 
   await press(page, panel, '[data-mode="raw"]');
-  await expect(panel.locator('pre').nth(1)).toHaveText("//table[@id='pokedex']//tr[.//a[normalize-space()='Bulbasaur']]/td[5]");
+  await expect(panel.locator('pre').nth(1)).toHaveText("//table[@id='pokedex']//tr[td/a[normalize-space()='Bulbasaur']]/td[5]");
 });
 
 test('Copy all puts the formatted list on the clipboard', async ({ context, sw, site }) => {
@@ -149,7 +149,7 @@ test('Esc cancels, and clicking a picked element again unpicks it', async ({ con
   const panel = await panelFrame(page);
   await expect(panel.locator('.card')).toHaveCount(1);
   await expect(panel.locator('pre')).toHaveText(
-    `page.locator("xpath=//div[@id='root']//div[.//h3[normalize-space()='Green mug']]/button");`,
+    `page.locator("xpath=//div[@id='root']//div[h3[normalize-space()='Green mug']]//button[normalize-space()='Add to cart']");`,
   );
 
   // Key-down alone: it closes the panel, and Playwright would otherwise wait forever to deliver

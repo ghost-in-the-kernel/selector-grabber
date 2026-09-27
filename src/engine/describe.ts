@@ -10,9 +10,14 @@ export function tagStep(el: Element): string {
   return `*[local-name()='${el.localName}']`;
 }
 
-/** Visible text squeezed the same way XPath's normalize-space() squeezes it. */
+/**
+ * Display text for the panel. innerText follows the page layout, so "Owner" and
+ * "ghost-in-the-kernel" in separate blocks read as two words, not "Ownerghost-in-the-kernel".
+ * Matching always uses xpathNormalizedText(), which is what XPath itself sees.
+ */
 export function normalizedText(el: Element): string {
-  return (el.textContent ?? '').replace(/[\s\u00a0]+/g, ' ').trim();
+  const raw = (el as HTMLElement).innerText ?? el.textContent ?? '';
+  return raw.replace(/[\s\u00a0]+/g, ' ').trim();
 }
 
 /** XPath normalize-space() only squeezes spaces, tabs, CR and LF (not &nbsp;). */

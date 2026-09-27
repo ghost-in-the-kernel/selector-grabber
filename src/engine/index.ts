@@ -58,6 +58,14 @@ function stabilityFor(rung: number): Stability {
   return 'Fragile';
 }
 
+/** The element's first direct text node, squeezed like normalize-space(text()). */
+function ownText(el: Element): string {
+  for (const n of Array.from(el.childNodes)) {
+    if (n.nodeType === 3 && n.textContent!.trim()) return n.textContent!.replace(/[ \t\r\n]+/g, ' ').trim();
+  }
+  return '';
+}
+
 function usableText(el: Element): string | null {
   const t = xpathNormalizedText(el);
   if (!t || t.length > MAX_TEXT || t.includes('\u00a0')) return null;
@@ -100,7 +108,13 @@ export function ownPredicates(el: Element): Pred[] {
 
   if (tag !== 'html' && tag !== 'body') {
     const t = usableText(el);
-    if (t) preds.push({ pred: `normalize-space()=${lit(t)}`, rung: 5, strategy: 'visible text' });
+    if (t) {
+      preds.push({ pred: `normalize-space()=${lit(t)}`, rung: 5, strategy: 'visible text' });
+      // A wrapper whose only text comes from this element has the same normalize-space() value.
+      // text() looks only at the element's own text node, which tells the two apart.
+      const own = ownText(el);
+      if (own === t) preds.push({ pred: `normalize-space(text())=${lit(t)}`, rung: 5, strategy: 'own text' });
+    }
   }
 
   if (tag === 'a') {
@@ -135,68 +149,77 @@ function findAnchors(el: Element, limit = 4): Anchor[] {
   return anchors;
 }
 
-/** Child steps from `from` down to `to`, adding [n] only where same-tag siblings exist. */
-function relativeSteps(from: Element, to: Element): string | null {
+/** How far up the tree to look for a labelled container. */
+const MAX_CONTEXT_LEVELS = 6;
+/** Longest child path the engine will write, from a container down to the element or to its key. */
+const MAX_STEPS = 3;
+
+/**
+ * Child steps from `from` down to `to`, e.g. `td[5]` or `td/a`. Positions ([n]) are added only
+ * where same-tag siblings exist, and only when asked. Returns null when `to` is more than
+ * MAX_STEPS levels down: a longer chain is an absolute path in disguise.
+ */
+function childPath(from: Element, to: Element, withPositions: boolean): string | null {
   const chain: Element[] = [];
-  for (let n: Element | null = to; n && n !== from; n = n.parentElement) chain.unshift(n);
+  for (let n: Element | null = to; n && n !== from; n = n.parentElement) {
+    chain.unshift(n);
+    if (chain.length > MAX_STEPS) return null;
+  }
   if (chain.length === 0 || chain[0].parentElement !== from) return null;
   return chain
     .map((node) => {
-      const parent = node.parentElement!;
-      const same = Array.from(parent.children).filter((c) => c.localName === node.localName);
       const step = tagStep(node);
+      if (!withPositions) return step;
+      const same = Array.from(node.parentElement!.children).filter((c) => c.localName === node.localName);
       return same.length > 1 ? `${step}[${same.indexOf(node) + 1}]` : step;
     })
     .join('/');
 }
 
-function hasSameTagSiblings(el: Element): boolean {
-  const parent = el.parentElement;
-  if (!parent) return false;
-  let n = 0;
-  for (const c of Array.from(parent.children)) if (c.localName === el.localName && ++n > 1) return true;
-  return false;
+/** Label-like keys first: a nearby label or heading names a container better than any other text. */
+function keyRank(k: Element): number {
+  const t = k.localName.toLowerCase();
+  if (t === 'label' || t === 'legend' || t === 'th' || t === 'dt' || /^h[1-6]$/.test(t)) return 0;
+  if (t === 'a') return 1;
+  if (t === 'strong' || t === 'b' || t === 'span' || t === 'small') return 2;
+  return 3;
 }
 
 /**
- * Repeated-structure strategy: find the repeated container (a table row, a list item, a card)
- * that holds the element, identify that container by a short text inside it (preferring links
- * and headers), then step down to the element by position.
- *   //table[@id='pokedex']//tr[.//a[normalize-space()='Bulbasaur']]/td[5]
+ * Context strategy: find the nearest container that holds a short, unique piece of text near the
+ * element (a table row with its name link, a card with its title, a form group with its label),
+ * then find the element inside that container. This is how people write locators by hand:
+ *   //table[@id='pokedex']//tr[td/a[normalize-space()='Bulbasaur']]/td[5]
+ *   //div[h3[normalize-space()='Red mug']]//button[normalize-space()='Add to cart']
+ * The container is at most MAX_CONTEXT_LEVELS up, and every child path is at most MAX_STEPS long.
  */
-function rowStrategy(el: Element, prefix: string, stopAt: Element | null): string | null {
-  for (let row: Element | null = el; row && row !== stopAt; row = row.parentElement) {
-    const t = row.localName.toLowerCase();
+function contextStrategy(el: Element, preds: Pred[], prefix: string, stopAt: Element | null): string | null {
+  const tag = tagStep(el);
+  let c = el.parentElement;
+  for (let level = 0; c && c !== stopAt && level < MAX_CONTEXT_LEVELS; level++, c = c.parentElement) {
+    const t = c.localName.toLowerCase();
     if (t === 'body' || t === 'html') break;
-    if (!hasSameTagSiblings(row)) continue;
 
-    const keys = Array.from(row.querySelectorAll('*'))
-      .filter((k) => k !== el && !el.contains(k) && !k.contains(el))
-      .filter((k) => k.children.length === 0 || k.localName === 'a')
-      .sort((a, b) => keyRank(a) - keyRank(b))
-      .slice(0, 40);
+    const keys = Array.from(c.querySelectorAll('*'))
+      .filter((k) => k !== el && !k.contains(el) && !el.contains(k))
+      .map((k) => ({ k, text: usableText(k), path: childPath(c!, k, false) }))
+      .filter((x): x is { k: Element; text: string; path: string } => !!x.text && !!x.path)
+      .sort((a, b) => keyRank(a.k) - keyRank(b.k) || a.path.split('/').length - b.path.split('/').length)
+      .slice(0, 30);
 
-    for (const k of keys) {
-      const text = usableText(k);
-      if (!text) continue;
-      const rowXp = `${prefix}//${tagStep(row)}[.//${tagStep(k)}[normalize-space()=${lit(text)}]]`;
-      if (!isUniqueMatch(rowXp, row)) continue;
-      if (row === el) return rowXp;
-      const rel = relativeSteps(row, el);
-      if (!rel) continue;
-      const xp = `${rowXp}/${rel}`;
-      if (isUniqueMatch(xp, el)) return xp;
+    for (const { text, path } of keys) {
+      const container = `${prefix}//${tagStep(c)}[${path}[normalize-space()=${lit(text)}]]`;
+      if (!isUniqueMatch(container, c)) continue;
+      for (const p of preds) {
+        const xp = `${container}//${tag}[${p.pred}]`;
+        if (isUniqueMatch(xp, el)) return xp;
+      }
+      const rel = childPath(c, el, true);
+      if (rel && isUniqueMatch(`${container}/${rel}`, el)) return `${container}/${rel}`;
+      if (isUniqueMatch(`${container}//${tag}`, el)) return `${container}//${tag}`;
     }
   }
   return null;
-}
-
-function keyRank(k: Element): number {
-  const t = k.localName.toLowerCase();
-  if (t === 'a') return 0;
-  if (t === 'th' || /^h[1-6]$/.test(t)) return 1;
-  if (t === 'label' || t === 'strong' || t === 'b') return 2;
-  return 3;
 }
 
 function result(el: Element, xpath: string, rung: number, strategy: string): LocatorResult {
@@ -249,13 +272,13 @@ export function generateLocator(el: Element): LocatorResult {
     if (isUniqueMatch(bare, el)) return result(el, bare, 7, 'anchored tag');
   }
 
-  // Rung 7c: repeated container identified by its text, then down by position.
+  // Rung 7c: inside the nearest container identified by nearby text (row, card, form group).
   for (const a of anchors) {
-    const xp = rowStrategy(el, a.xpath, a.el);
-    if (xp) return result(el, xp, 7, 'anchored row');
+    const xp = contextStrategy(el, preds, a.xpath, a.el);
+    if (xp) return result(el, xp, 7, 'anchored context');
   }
-  const docRow = rowStrategy(el, '', null);
-  if (docRow) return result(el, docRow, 7, 'row');
+  const ctx = contextStrategy(el, preds, '', null);
+  if (ctx) return result(el, ctx, 7, 'context');
 
   // Rung 8: position among same-tag elements under the nearest anchor. Always unique, but fragile.
   const base = `${anchors[0]?.xpath ?? ''}//${tag}`;

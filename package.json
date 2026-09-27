@@ -1,6 +1,6 @@
 {
   "name": "selector-grabber",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Click elements in Brave or Chrome and copy unique relative XPath selectors for Playwright and Selenium.",
   "private": true,
   "type": "module",

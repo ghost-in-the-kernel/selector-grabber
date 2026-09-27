@@ -9,7 +9,7 @@ Built for Brave first, and it works the same in Chrome. It works on the first cl
 
 ## Try it in Brave (no build needed)
 
-1. Download `selector-grabber-extension-v0.1.0.zip` from the [Releases](../../releases) page (or build it, below) and unzip it.
+1. Download `selector-grabber-store-upload-v0.1.1.zip` from the [Releases](../../releases) page (or build it, below) and unzip it.
 2. Open `brave://extensions` (in Chrome: `chrome://extensions`).
 3. Turn on **Developer mode** (top right).
 4. Click **Load unpacked** and choose the unzipped extension folder (the one with `manifest.json` and `background.js` in it).
@@ -32,7 +32,7 @@ Example output:
 // 1st selector: link "Bulbasaur"  [OK]
 page.locator("xpath=//a[normalize-space()='Bulbasaur']");
 // 2nd selector: cell "45"  [OK]
-page.locator("xpath=//table[@id='pokedex']//tr[.//a[normalize-space()='Bulbasaur']]/td[5]");
+page.locator("xpath=//table[@id='pokedex']//tr[td/a[normalize-space()='Bulbasaur']]/td[5]");
 ```
 
 ## How it picks a selector
@@ -47,13 +47,14 @@ For each element the engine climbs a ladder, most stable first, and keeps the fi
 | 4 | `aria-label`, `placeholder`, `title`, `alt`, or the field's `<label>` | `//input[@id=//label[normalize-space()='Email']/@for]` | Strong |
 | 5 | Exact visible text (40 characters or fewer) | `//a[normalize-space()='Charmander']` | OK |
 | 6 | Link path | `//a[@href='/pokedex/bulbasaur']` | OK |
-| 7 | Two attributes together, or inside a uniquely located ancestor, or the repeated row or card found by its text | `//div[@id='root']//div[.//h3[normalize-space()='Red mug']]/button` | OK |
+| 7 | Two attributes together, inside a uniquely located ancestor, or inside the nearest container named by nearby text (a row's link, a card's title, a group's label or legend), never more than three steps deep | `//div[@id='root']//div[h3[normalize-space()='Red mug']]//button[normalize-space()='Add to cart']` | OK |
 | 8 | Position under the nearest anchor (last resort) | `(//div[@id='root']//span)[2]` | Fragile |
 
 Other rules:
 
-- Generated values are skipped: `ember123`, `:r1:`, `css-1x2y3z`, `sc-AxjAm`, `product-card-4821`, UUIDs.
-- `normalize-space()` is used instead of `text()`, because `text()='X'` fails when text is split by a child tag or padded with whitespace.
+- Generated values are skipped: `ember123`, `:r1:`, `_r_c_`, `css-1x2y3z`, `sc-AxjAm`, `product-card-4821`, random ids like `_xCG5apS3Hrzw0PEPqMW4yQI_60`, UUIDs.
+- No absolute path in disguise: a locator never has more than three `/child` steps in a row (checked by the property test).
+- `normalize-space()` is used instead of `text()='X'`, which fails when text is padded with whitespace. `normalize-space(text())` is used only when a wrapper element shares the same visible text.
 - Text containing both `'` and `"` is written with `concat()`, the only way XPath 1.0 can express it.
 - SVG elements use `*[local-name()='path']`, because SVG lives in its own namespace.
 - Every pick is checked again when you press Done, in case the page changed after the click.

@@ -85,7 +85,7 @@ test('capture store screenshots', async () => {
       <div style="font-size:30px;font-weight:800;letter-spacing:.2px">Selector Grabber</div>
     </div>
     <div style="font-size:17px;margin-top:14px;color:#dbeafe;line-height:1.35">Click elements. Copy unique XPath<br>for Playwright and Selenium.</div>
-    <div style="margin-top:16px;font:13px ui-monospace,Menlo,Consolas,monospace;background:rgba(15,23,42,.55);padding:8px 10px;border-radius:8px;white-space:nowrap;overflow:hidden">//tr[.//a[normalize-space()='Quiet Engines']]</div>
+    <div style="margin-top:16px;font:13px ui-monospace,Menlo,Consolas,monospace;background:rgba(15,23,42,.55);padding:8px 10px;border-radius:8px;white-space:nowrap;overflow:hidden">//tr[td/a[normalize-space()='Quiet Engines']]</div>
   </body></html>`);
   await tile.screenshot({ path: `${OUT}/promo-small-440x280.png` });
 

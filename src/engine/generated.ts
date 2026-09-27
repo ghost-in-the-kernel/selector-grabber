@@ -13,7 +13,9 @@ export function looksGenerated(value: string | null | undefined): boolean {
   const v = value.trim();
   if (v.length === 0 || v.length > 50) return true;
   if (GENERATED_PREFIXES.test(v)) return true;
-  if (v.includes(':')) return true; // React useId() style, e.g. «r1» / :r1:
+  if (v.includes(':')) return true; // React 18 useId(): :r1:
+  if (/[«»]/.test(v)) return true; // React 19.0 useId(): «r1»
+  if (/^_r_[a-z0-9]*_?$/i.test(v)) return true; // React 19.1+ useId(): _r_c_
   if (/\d{3,}/.test(v)) return true; // long digit runs are usually counters or timestamps
   // Hex or UUID chunks with at least one digit and one letter, e.g. 3f2a9c, a1b2c3d4
   if (/(^|[-_])(?=[0-9a-f]*\d)(?=[0-9a-f]*[a-f])[0-9a-f]{6,}($|[-_])/i.test(v)) return true;
